@@ -86,7 +86,7 @@
 									<li>
 										<div class="cart-tab-1">
 											<div class="cart-item-check">
-												<a href="javascript:void(0)" class="item-check-btn">
+												<a href="javascript:void(0)" class="item-check-btn" v-bind:class="{'check': items.checked}" @click = "selectProduct(items)">
 												<svg class="icon icon-ok"><use xlink:href="#icon-ok"></use></svg>
 											</a>
 										</div>
@@ -112,9 +112,9 @@
 										<div class="item-quantity">
 											<div class="select-self select-self-open">
 												<div class="quentity">
-													<a href="javascript:void(0)">-</a>
+													<a href="javascript:void(0)" v-on:click = "changeMoney(items, -1)">-</a>
 													<input type="text" v-model="items.productQuentity" disabled>
-													<a href="javascript:void(0)">+</a>
+													<a href="javascript:void(0)" @click = "changeMoney(items, 1)">+</a>
 												</div>
 											</div>
 											<div class="item-stock">有货</div>
@@ -125,7 +125,7 @@
 									</div>
 									<div class="cart-tab-5">
 										<div class="cart-item-opration">
-											<a href="javascript:void(0)" class="item-edit-btn">
+											<a href="javascript:void(0)" class="item-edit-btn" @click="delConfirm(items)">
 											<svg class="icon icon-del"><use xlink:href="#icon-del"></use></svg>
 										</a>
 									</div>
@@ -140,21 +140,21 @@
 					<div class="cart-foot-l">
 						<div class="item-all-check">
 							<a href="javascript:void(0)">
-								<span class="item-check-btn">
+								<span class="item-check-btn" v-bind:class="{'check': checkAllFlag}" @click="selectAll(true)">
 									<svg class="icon icon-ok"><use xlink:href="#icon-ok"></use></svg>
 								</span>
 								<span>全选</span>
 							</a>
 						</div>
 						<div class="item-all-del">
-							<a href="javascript:void(0)" class="item-del-btn">
+							<a href="javascript:void(0)" class="item-del-btn"  v-bind:class="{'check': checkAllFlag}" @click="selectAll(false)">
 								取消全选
 							</a>
 						</div>
 					</div>
 					<div class="cart-foot-r">
 						<div class="item-total">
-							Item total: <span class="total-price"></span>
+							Item total: <span class="total-price">{{totalMoney | formatMoney}}</span>
 						</div>
 						<div class="next-btn-wrap">
 							<a href="address.html" class="btn btn--red">结账</a>
@@ -164,23 +164,23 @@
 			</div>
 		</div>
 
-		<div class="md-modal modal-msg md-modal-transition" id="showModal">
+		<div class="md-modal modal-msg md-modal-transition" :class="{'md-show': delFlag}" id="showModal">
 		<div class="md-modal-inner">
 			<div class="md-top">
-				<button class="md-close">关闭</button>
+				<button class="md-close" @click="delFlag=false">关闭</button>
 			</div>
 			<div class="md-content">
 				<div class="confirm-tips">
 					<p id="cusLanInfo">你确认删除此订单信息吗?</p>
 				</div>
 				<div class="btn-wrap col-2">
-					<button class="btn btn--m" id="btnModalConfirm">Yes</button>
-					<button class="btn btn--m btn--red" id="btnModalCancel">No</button>
+					<button class="btn btn--m" id="btnModalConfirm" @click = "delData()">Yes</button>
+					<button class="btn btn--m btn--red" id="btnModalCancel" @click="delFlag=false">No</button>
 				</div>
 			</div>
 		</div>
 	</div>
-	<!--<div class="md-overlay" id="showOverLay" v-show="confirmDelete" ></div>-->
+	<div class="md-overlay" id="showOverLay" v-if="delFlag"></div>
 </div>
 <script src="lib/vue.js" type="text/javascript" charset="utf-8"></script>
 <script src="lib/vue-resource.js" type="text/javascript" charset="utf-8"></script>
@@ -188,10 +188,17 @@
 	var vm = new Vue({
 	  	el: '#app',
 	  	data: {
-	    	productList:[]
+	    	productList:[],
+	    	checkAllFlag: false,
+	    	totalMoney:0,
+	    	delFlag:false,
+	    	delProduct:""
 	  	},
 	  	mounted: function(){
-	  		this.cartView();
+	  		var _this = this;
+	  		this.$nextTick(function () {
+			    this.cartView();
+			})
 	  	},
 	  	filters: {
          	formatMoney:function (value) {
@@ -203,9 +210,69 @@
 	  		cartView: function(){
 	  			var _this = this;
 	  			this.$http.get("cart_show.php").then(function(res){
-	  				_this.productList = res.data;
+//	  				_this.productList = res.body;  //同data
+					_this.productList = res.data;
 	  				console.log(_this.productList[0].parts);
 	  			});
+	  		},
+	  		changeMoney: function(product, way){
+	  			if(way>0){
+	  				product.productQuentity++;
+	  			}
+	  			if(way<0){
+	  				if(product.productQuentity<2){
+	  					product.productQuentity =1;
+	  				}else{
+	  				product.productQuentity--;
+	  					
+	  				}
+	  			}
+	  			this.calcTotalPrice();
+	  		},
+	  		selectProduct: function(item){
+	  			if(typeof item.checked == "undefined"){
+	  				this.$set(item, "checked", true);
+	  			}else{
+	  				item.checked = !item.checked;
+	  			}
+	  			this.calcTotalPrice();
+	  		},
+	  		selectAll: function(flag){
+	  			this.checkAllFlag = flag;
+	  			var _this = this;
+	  			this.productList.forEach(function(item, index){
+	  				if(typeof item.checked == "undefined"){
+	  					_this.$set(item, "checked", _this.checkAllFlag);
+	  			    }else{
+	  					item.checked = _this.checkAllFlag;
+	  			    }
+	  			});
+	  			this.calcTotalPrice();
+	  		},
+	  		calcTotalPrice: function(){
+	  			this.totalMoney=0;
+	  			var _this = this;
+	  			this.productList.forEach(function(item, index){
+	  				if(item.checked){
+	  					_this.totalMoney += item.productQuentity * item.productPrice;
+	  			    }
+	  			});
+	  		},
+	  		delConfirm:function(item){
+	  			this.delFlag = true;
+	  			this.delProduct = item;
+	  		},
+	  		delData:function(){
+	  			var index = this.productList.indexOf(this.delProduct);
+	  			var _this = this;
+	  			this.$http.get("admin/cart_del_handle.php?productId="+_this.delProduct.productId).then(function(res){
+//	  				_this.productList = res.body;  //同data
+//					_this.productList = res.data;
+					_this.productList.splice(index, 1);
+					_this.delFlag = false;
+	  				console.log(res.body);
+	  			});
+	  			
 	  		}
 	  	}
 	});

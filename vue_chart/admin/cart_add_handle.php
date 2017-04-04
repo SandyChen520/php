@@ -10,9 +10,9 @@
 	$setstr = "insert into product_cart(productId, productName, productPrice, productQuentity, productImage, parts) values('$productId', '$productName', '$productPrice', '$productQuentity', '$productImage', '$parts')";
 	print_r($setstr);
 	if(mysqli_query($con, $setstr)){
-		echo "<script>alert('发布文章成功');</script>";
+		echo "<script>alert('插入成功');</script>";
 	}else{
 		echo mysqli_error($con);
-		echo "<script>alert('发布失败');</script>";
+		echo "<script>alert('插入失败');</script>";
 	}
 ?>
